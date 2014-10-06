@@ -1,0 +1,50 @@
+Msgfs
+=====
+
+Jeff Read <bitwize@gmail.com>
+
+Msgfs is a little proof of concept of a multicast publish-subscribe
+bus that uses inotify to alert listening processes. It is not a file
+system in its own right, but rather a protocol which uses the file
+system to achieve a form of inter-process communication.
+
+The protocol is as follows: To send a message, write to a file in a
+directory that has msgfs listeners watching it via inotify, and then
+close the file.
+
+To receive messages, add an inotify watch to the directory with event
+mask IN_CLOSE_WRITE with inotify_add_watch(2). When you receive an
+event on this watch, it means a message has been sent; the file's
+contents are the body of the message; you can open(2) the file and
+read(2) or mmap(2) it to get at its contents.
+
+A new file should be created (with UUIDs, mkstemp, or similar) for
+every message sent. Senders are responsible for cleaning up the
+messages they create (perhaps after a timeout).
+
+Advantages
+----------
+
+1. Multicast-capable, publish-subscribe messaging. Unix permissions
+determine who may send and who may receive messages on a particular
+"bus".
+
+2. Serialization-agnostic. Ship XML, JSON, text, binary, whatever you
+like.
+
+3. Message size limited by file size. Want to alert a group of
+processes about a cool new lolcat JPEG? Send it as-is in a message!
+
+4. Send messages with 'echo' :)
+
+Drawbacks
+---------
+
+1. It's probably insecure as all get-out. Anyone with read access to
+the msgfs message can see it; anyone with write access can clobber
+existing messages before their intended consumers can open them in a
+race condition, etc. DO NOT transmit sensitive information with this
+version of msgfs. :)
+
+2. The API presented in msgfs.h does not support asynchronous polling
+for msgfs events.
